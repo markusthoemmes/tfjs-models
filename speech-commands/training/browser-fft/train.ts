@@ -15,13 +15,13 @@
  * =============================================================================
  */
 
-import * as tf from '@tensorflow/tfjs';
-import * as argparse from 'argparse';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as shelljs from 'shelljs';
+import * as tf from "@tensorflow/tfjs";
+import * as argparse from "argparse";
+import * as fs from "fs";
+import * as path from "path";
+import * as shelljs from "shelljs";
 
-import {Dataset} from '../../src/dataset';
+import { Dataset } from "../../src/dataset";
 
 /**
  * Create TensorFlow.js Model for speech-commands recognition.
@@ -35,25 +35,36 @@ import {Dataset} from '../../src/dataset';
  * @returns An uncompiled tf.Model object.
  */
 export function createBrowserFFTModel(
-    inputShape: tf.Shape, numClasses: number): tf.Model {
+  inputShape: tf.Shape,
+  numClasses: number
+): tf.LayersModel {
   const model = tf.sequential();
-  model.add(tf.layers.conv2d(
-      {filters: 8, kernelSize: [2, 8], activation: 'relu', inputShape}));
-  model.add(tf.layers.maxPooling2d({poolSize: [2, 2], strides: [2, 2]}));
   model.add(
-      tf.layers.conv2d({filters: 32, kernelSize: [2, 4], activation: 'relu'}));
-  model.add(tf.layers.maxPooling2d({poolSize: [2, 2], strides: [2, 2]}));
+    tf.layers.conv2d({
+      filters: 8,
+      kernelSize: [2, 8],
+      activation: "relu",
+      inputShape
+    })
+  );
+  model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2] }));
   model.add(
-      tf.layers.conv2d({filters: 32, kernelSize: [2, 4], activation: 'relu'}));
-  model.add(tf.layers.maxPooling2d({poolSize: [2, 2], strides: [2, 2]}));
+    tf.layers.conv2d({ filters: 32, kernelSize: [2, 4], activation: "relu" })
+  );
+  model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2] }));
   model.add(
-      tf.layers.conv2d({filters: 32, kernelSize: [2, 4], activation: 'relu'}));
-  model.add(tf.layers.maxPooling2d({poolSize: [2, 2], strides: [1, 2]}));
+    tf.layers.conv2d({ filters: 32, kernelSize: [2, 4], activation: "relu" })
+  );
+  model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2] }));
+  model.add(
+    tf.layers.conv2d({ filters: 32, kernelSize: [2, 4], activation: "relu" })
+  );
+  model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [1, 2] }));
   model.add(tf.layers.flatten({}));
-  model.add(tf.layers.dropout({rate: 0.25}));
-  model.add(tf.layers.dense({units: 2000, activation: 'relu'}));
-  model.add(tf.layers.dropout({rate: 0.5}));
-  model.add(tf.layers.dense({units: numClasses, activation: 'softmax'}));
+  model.add(tf.layers.dropout({ rate: 0.25 }));
+  model.add(tf.layers.dense({ units: 2000, activation: "relu" }));
+  model.add(tf.layers.dropout({ rate: 0.5 }));
+  model.add(tf.layers.dense({ units: numClasses, activation: "softmax" }));
 
   return model;
 }
@@ -67,7 +78,7 @@ export function createBrowserFFTModel(
  * @return A Dataset object, which includes the data from all the TFJSSCDS
  *   (.bin) files under `inputPath` combined.
  */
-function loadDataset(inputPath): Dataset {
+function loadDataset(inputPath: string): Dataset {
   if (!fs.lstatSync(inputPath).isDirectory()) {
     throw new Error(`Input path is not a directory: ${inputPath}`);
   }
@@ -93,41 +104,50 @@ function loadDataset(inputPath): Dataset {
 }
 
 function parseArguments(): any {
-  const parser = new argparse.ArgumentParser(
-      {description: 'Training a browser-FFT speech-commands model'});
-  parser.addArgument('dataPath', {
-    type: 'string',
-    help: 'Path to an input data directory. The directory is expected to ' +
-        'contain .bin files in the TFJSSCDS format in a nested fashion.'
+  const parser = new argparse.ArgumentParser({
+    description: "Training a browser-FFT speech-commands model"
   });
-  parser.addArgument('modelSavePath', {
-    type: 'string',
-    help: 'Path to directory in which the trained model will be saved, ' +
-        'e.g., "./my_18w_model'
+  parser.addArgument("dataPath", {
+    type: "string",
+    help:
+      "Path to an input data directory. The directory is expected to " +
+      "contain .bin files in the TFJSSCDS format in a nested fashion."
   });
-  parser.addArgument('--gpu', {
-    action: 'storeTrue',
-    help: 'Perform training using tfjs-node-gpu (Requires CUDA and CuDNN)'
+  parser.addArgument("modelSavePath", {
+    type: "string",
+    help:
+      "Path to directory in which the trained model will be saved, " +
+      'e.g., "./my_18w_model'
   });
-  parser.addArgument(
-      '--epochs',
-      {type: 'int', defaultValue: 200, help: 'Number of training epochs'});
-  parser.addArgument(
-      '--batchSize',
-      {type: 'int', defaultValue: 512, help: 'Batch size for training'});
-  parser.addArgument('--validationSplit', {
-    type: 'float',
+  parser.addArgument("--gpu", {
+    action: "storeTrue",
+    help: "Perform training using tfjs-node-gpu (Requires CUDA and CuDNN)"
+  });
+  parser.addArgument("--epochs", {
+    type: "int",
+    defaultValue: 200,
+    help: "Number of training epochs"
+  });
+  parser.addArgument("--batchSize", {
+    type: "int",
+    defaultValue: 512,
+    help: "Batch size for training"
+  });
+  parser.addArgument("--validationSplit", {
+    type: "float",
     defaultValue: 0.1,
-    help: 'Validation split for training'
+    help: "Validation split for training"
   });
-  parser.addArgument('--optimizer', {
-    type: 'string',
-    defaultValue: 'rmsprop',
-    help: 'Optimizer name for training (e.g., adam, rmsprop)'
+  parser.addArgument("--optimizer", {
+    type: "string",
+    defaultValue: "rmsprop",
+    help: "Optimizer name for training (e.g., adam, rmsprop)"
   });
-  parser.addArgument(
-      '--learningRate',
-      {type: 'float', defaultValue: 1e-3, help: 'Learning rate for training'});
+  parser.addArgument("--learningRate", {
+    type: "float",
+    defaultValue: 1e-3,
+    help: "Learning rate for training"
+  });
   return parser.parseArgs();
 }
 
@@ -135,35 +155,41 @@ async function main() {
   const args = parseArguments();
 
   if (args.gpu) {
-    console.log('Training using GPU.');
-    require('@tensorflow/tfjs-node-gpu');
+    console.log("Training using GPU.");
+    require("@tensorflow/tfjs-node-gpu");
   } else {
-    console.log('Training using CPU.');
-    require('@tensorflow/tfjs-node');
+    console.log("Training using CPU.");
+    require("@tensorflow/tfjs-node");
   }
 
-  const trainDataDir = path.join(args.dataPath, 'train');
+  const trainDataDir = path.join(args.dataPath, "train");
   console.log(`Loading trainig data from ${trainDataDir}...`);
   const trainDataset = loadDataset(trainDataDir);
   const vocab = trainDataset.getVocabulary();
   tf.util.assert(
-      vocab.length > 1,
+    vocab.length > 1,
+    () =>
       `Expected vocabulary to have at least two words, but ` +
-          `got vocabulary: ${JSON.stringify(vocab)}`);
+      `got vocabulary: ${JSON.stringify(vocab)}`
+  );
   console.log(`Vocabulary size: ${vocab.length} (${JSON.stringify(vocab)})`);
 
-  console.log('Collecting spectrogram and targets data...');
-  let {xs, ys} = trainDataset.getSpectrogramsAsTensors(null, {shuffle: true});
+  console.log("Collecting spectrogram and targets data...");
+  let { xs: xs, ys: ys } = trainDataset.getData(null, {
+    shuffle: true
+  }) as { xs: tf.Tensor; ys: tf.Tensor };
   tf.util.assert(
-      xs.rank === 4,
-      `Expected xs tensor to be rank-4, but got rank ${xs.rank}`);
+    xs.rank === 4,
+    () => `Expected xs tensor to be rank-4, but got rank ${xs.rank}`
+  );
   tf.util.assert(
-      ys.rank === 2,
-      `Expected ys tensor to be rank-2, but got rank ${ys.rank}`);
+    ys.rank === 2,
+    () => `Expected ys tensor to be rank-2, but got rank ${ys.rank}`
+  );
 
   // Split the data manually into the training and validation subsets.
   // We do this manually for memory efficiency.
-  console.log('Splitting data into training and validation subsets...');
+  console.log("Splitting data into training and validation subsets...");
   let validationData: [tf.Tensor, tf.Tensor] = null;
   if (args.validationSplit > 0) {
     const numExamples = xs.shape[0];
@@ -178,45 +204,57 @@ async function main() {
     console.log(`# of validation examples: ${numValExamples}`);
 
     const spectrogramSize = xs.shape[1] * xs.shape[2];
-    xs = tf.tensor4d(
-        xsData.slice(0, numTrainExamples * spectrogramSize),
-        [numTrainExamples, xs.shape[1], xs.shape[2], 1]);
-    ys = tf.tensor2d(
-        ysData.slice(0, numTrainExamples * ys.shape[1]),
-        [numTrainExamples, ys.shape[1]]);
+    xs = tf.tensor4d(xsData.slice(0, numTrainExamples * spectrogramSize), [
+      numTrainExamples,
+      xs.shape[1],
+      xs.shape[2],
+      1
+    ]);
+    ys = tf.tensor2d(ysData.slice(0, numTrainExamples * ys.shape[1]), [
+      numTrainExamples,
+      ys.shape[1]
+    ]);
     const valXs = tf.tensor4d(
-        xsData.slice(
-            numTrainExamples * spectrogramSize, numExamples * spectrogramSize),
-        [numValExamples, xs.shape[1], xs.shape[2], 1]);
+      xsData.slice(
+        numTrainExamples * spectrogramSize,
+        numExamples * spectrogramSize
+      ),
+      [numValExamples, xs.shape[1], xs.shape[2], 1]
+    );
     const valYs = tf.tensor2d(
-        ysData.slice(numTrainExamples * ys.shape[1], numExamples * ys.shape[1]),
-        [numValExamples, ys.shape[1]]);
+      ysData.slice(numTrainExamples * ys.shape[1], numExamples * ys.shape[1]),
+      [numValExamples, ys.shape[1]]
+    );
     validationData = [valXs, valYs];
   }
 
   const model = createBrowserFFTModel(xs.shape.slice(1), vocab.length);
   model.compile({
-    loss: 'categoricalCrossentropy',
-    optimizer: tf.train[args.optimizer](args.learningRate),
-    metrics: ['accuracy']
+    loss: "categoricalCrossentropy",
+    optimizer: tf.train.rmsprop(args.learningRate),
+    metrics: ["accuracy"]
   });
   model.summary();
 
   // Train the model.
-  await model.fit(
-      xs, ys, {epochs: args.epochs, batchSize: args.batchSize, validationData});
-  tf.dispose([xs, ys, validationData]);  // For memory efficiency.
+  await model.fit(xs, ys, {
+    epochs: args.epochs,
+    batchSize: args.batchSize,
+    validationData
+  });
+  tf.dispose([xs, ys, validationData]); // For memory efficiency.
 
   // Evaluate the model.
-  if (fs.existsSync(path.join(args.dataPath, 'test'))) {
-    const testDataset = loadDataset(path.join(args.dataPath, 'test'));
-    const {xs: testXs, ys: testYs} =
-        testDataset.getSpectrogramsAsTensors(null, {shuffle: true});
+  if (fs.existsSync(path.join(args.dataPath, "test"))) {
+    const testDataset = loadDataset(path.join(args.dataPath, "test"));
+    const { xs: testXs, ys: testYs } = testDataset.getData(null, {
+      shuffle: true
+    }) as { xs: tf.Tensor; ys: tf.Tensor };
     console.log(`\n# of test examples: ${testXs.shape[0]}`);
 
-    const [testLossScalar, testAccScalar] =
-        model.evaluate(testXs, testYs, {batchSize: args.batchSize}) as
-        tf.Tensor[];
+    const [testLossScalar, testAccScalar] = model.evaluate(testXs, testYs, {
+      batchSize: args.batchSize
+    }) as tf.Tensor[];
     const testLoss = (await testLossScalar.data())[0];
     const testAcc = (await testAccScalar.data())[0];
     console.log(`Test loss: ${testLoss.toFixed(6)}`);
@@ -227,14 +265,14 @@ async function main() {
   // Save the trained model.
   const saveDir = path.dirname(args.modelSavePath);
   if (!fs.existsSync(saveDir)) {
-    shelljs.mkdir('-p', saveDir);
+    shelljs.mkdir("-p", saveDir);
   }
   await model.save(`file://${args.modelSavePath}`);
   console.log(`Saved model to: ${args.modelSavePath}`);
 
   // Sava the metadata for the model.
-  const metadata: {} = {words: vocab, frameSize: xs.shape[2]};
-  const metadataPath = path.join(args.modelSavePath, 'metadata.json');
+  const metadata: {} = { words: vocab, frameSize: xs.shape[2] };
+  const metadataPath = path.join(args.modelSavePath, "metadata.json");
   fs.writeFileSync(metadataPath, JSON.stringify(metadata));
   console.log(`Saved metadata to: ${metadataPath}`);
 }
